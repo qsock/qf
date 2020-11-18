@@ -1,0 +1,8 @@
+syntax = "proto3";
+
+// protoc -I ./ --gogofaster_out=plugins=grpc:. qgrpc.proto;
+package qgrpc;
+
+//option go_package="qgrpc";
+
+message NoArgs {}
