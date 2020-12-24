@@ -2,35 +2,106 @@ package ka
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/Shopify/sarama"
-	"github.com/qsock/qf/qlog"
 	"math/rand"
-	"strings"
 	"sync"
 )
 
-type Config struct {
+type ConsumerConfig struct {
+	// broker的集群地址
 	Brokers []string `toml:"brokers"`
-	Topic   string   `toml:"topic"`
-	Group   string   `toml:"group"`
-	Workers int      `toml:"workers"`
-	Oldest  bool     `toml:"oldest"`
+	// topic 的名称
+	Topic string `toml:"topic"`
+	// 消费组名称
+	Group string `toml:"group"`
+
+	// 多少个协程
+	Workers int `toml:"workers"`
+	// 是否从最老的开始消费
+	Oldest bool `toml:"oldest"`
 }
 
-type Consumer struct {
-	test    bool
-	group   sarama.ConsumerGroup
-	workers int
-	handler func([]byte)
-	stop    chan bool
-	wg      *sync.WaitGroup
-	cfg     *Config
+func (c *ConsumerConfig) Check() bool {
+	if len(c.Topic) == 0 ||
+		len(c.Brokers) == 0 {
+		return false
+	}
+	if c.Group == "" {
+		c.Group = fmt.Sprintf("%s%.8x", TestPrefix, rand.Int63())
+	}
+	if c.Workers == 0 {
+		c.Workers = 10
+	}
+	return true
 }
 
-const (
-	TEST_PREFIX = "test_consumer_"
-)
+func NewConsumer(cfg *ConsumerConfig, name ...string) (*Consumer, error) {
+	return NewConsumerWithConfig(cfg, nil, name...)
+}
+
+func NewConsumerWithInterceptor(cfg1 *ConsumerConfig, interceptor sarama.ConsumerInterceptor, name ...string) (*Consumer, error) {
+	if !cfg1.Check() {
+		return nil, errors.New("config error")
+	}
+	cfg2 := sarama.NewConfig()
+	cfg2.Consumer.Return.Errors = true
+	cfg2.Version = sarama.V0_10_2_0
+	if cfg1.Oldest {
+		cfg2.Consumer.Offsets.Initial = sarama.OffsetOldest
+	} else {
+		cfg2.Consumer.Offsets.Initial = sarama.OffsetNewest
+	}
+	cfg2.Consumer.Interceptors = []sarama.ConsumerInterceptor{interceptor}
+	return NewConsumerWithConfig(cfg1, cfg2, name...)
+}
+
+func NewConsumerWithConfig(cfg1 *ConsumerConfig, cfg2 *sarama.Config, name ...string) (*Consumer, error) {
+	if !cfg1.Check() {
+		return nil, errors.New("config error")
+	}
+	if cfg2 == nil {
+		cfg2 = sarama.NewConfig()
+		cfg2.Consumer.Return.Errors = true
+		cfg2.Version = sarama.V0_10_2_0
+		if cfg1.Oldest {
+			cfg2.Consumer.Offsets.Initial = sarama.OffsetOldest
+		} else {
+			cfg2.Consumer.Offsets.Initial = sarama.OffsetNewest
+		}
+	}
+	if err := cfg2.Validate(); err != nil {
+		return nil, err
+	}
+	// Start with a client
+	client, err := sarama.NewClient(cfg1.Brokers, cfg2)
+	if err != nil {
+		return nil, err
+	}
+	// Start a new consumer group
+	consumerGroup, err := sarama.NewConsumerGroupFromClient(cfg1.Group, client)
+	if err != nil {
+		return nil, err
+	}
+	c := new(Consumer)
+	c.cfg = cfg1
+	c.config = cfg2
+	c.group = consumerGroup
+	c.wg = &sync.WaitGroup{}
+	c.ctx, c.cancel = context.WithCancel(context.Background())
+
+	consumerName := gDefaultName
+	if len(name) > 0 {
+		consumerName = name[0]
+	}
+	_, ok := consumers[consumerName]
+	if ok {
+		return nil, errors.New("consumer exists")
+	}
+	consumers[consumerName] = c
+	return c, nil
+}
 
 type consumerGroupHandler struct {
 	consumer *Consumer
@@ -41,98 +112,63 @@ func (consumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error { retur
 func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for {
 		select {
-		case msg := <-claim.Messages():
-			h.consumer.handler(msg.Value)
-			// 测试用的group不标记处理完毕，防止破坏集群数据
-			if !h.consumer.test {
-				sess.MarkMessage(msg, "done")
+		case msg, ok := <-claim.Messages():
+			if !ok {
+				return nil
 			}
-		case <-h.consumer.stop:
-			return nil
-
+			if err := h.consumer.c(msg.Value); err == nil {
+				sess.MarkMessage(msg, gMsgDone)
+			}
 		}
 	}
 }
 
-func NewConsumer(cfg *Config, hdl func([]byte)) *Consumer {
-	config := sarama.NewConfig()
-	config.Consumer.Return.Errors = true
-	config.Version = sarama.V2_3_0_0
+func (c *Consumer) HandleError(e HandleErrorFunc) {
+	c.e = e
+}
 
-	if cfg.Oldest {
-		config.Consumer.Offsets.Initial = sarama.OffsetOldest
-	} else {
-		config.Consumer.Offsets.Initial = sarama.OffsetNewest
+func (c *Consumer) HandleSucceed(cc HandleConsumerFunc) {
+	c.c = cc
+}
+
+func (c *Consumer) Run() {
+	go c.Handle()
+	for i := 0; i < c.cfg.Workers; i++ {
+		go c.Worker()
 	}
+}
 
-	if err := config.Validate(); err != nil {
-		qlog.Get().Logger().Error("kafka||err:%#v", err)
-		return nil
-	}
+func (c *Consumer) Close() error {
+	c.cancel()
+	c.wg.Wait()
+	return c.group.Close()
+}
 
-	group := cfg.Group
-	if group == "" {
-		group = fmt.Sprintf("%s%.8x", TEST_PREFIX, rand.Int63())
-	}
-
-	// Start with a client
-	client, err := sarama.NewClient(cfg.Brokers, config)
-	if err != nil {
-		qlog.Get().Logger().Error("kafka||err:%#v", err)
-		return nil
-	}
-
-	// Start a new consumer group
-	consumerGroup, err := sarama.NewConsumerGroupFromClient(group, client)
-	if err != nil {
-		qlog.Get().Logger().Error("kafka||err:%#v", err)
-		return nil
-	}
-
-	// Track errors
-	go func() {
-		for err := range consumerGroup.Errors() {
-			qlog.Get().Logger().Error("kafka||err:%#v", err)
+func (c *Consumer) Worker() {
+	c.wg.Add(1)
+	defer c.wg.Done()
+	topics := []string{c.cfg.Topic}
+	handler := consumerGroupHandler{c}
+	if err := c.group.Consume(c.ctx, topics, handler); err != nil {
+		if c.e != nil {
+			c.e(err)
 		}
-	}()
-
-	return &Consumer{
-		test:    strings.HasPrefix(group, TEST_PREFIX),
-		group:   consumerGroup,
-		workers: cfg.Workers,
-		handler: hdl,
-		stop:    make(chan bool),
-		wg:      &sync.WaitGroup{},
-		cfg:     cfg,
 	}
 }
 
-func (self *Consumer) Run() {
-	for i := 0; i < self.workers; i++ {
-		go self.Worker()
+func (c *Consumer) Handle() {
+	for {
+		select {
+		case err, ok := <-c.group.Errors():
+			{
+				if !ok {
+					return
+				}
+				if c.e != nil {
+					c.e(err)
+				}
+			}
+		}
 	}
-}
 
-func (self *Consumer) Stop() {
-	close(self.stop)
-	self.wg.Wait()
-	_ = self.group.Close()
-}
-
-func (self *Consumer) Wait() {
-	self.wg.Wait()
-	_ = self.group.Close()
-}
-
-func (self *Consumer) Worker() {
-	self.wg.Add(1)
-	defer self.wg.Done()
-	ctx := context.Background()
-	topics := []string{self.cfg.Topic}
-	handler := consumerGroupHandler{self}
-	err := self.group.Consume(ctx, topics, handler)
-	if err != nil {
-		qlog.Get().Logger().Errorf("kafka||err:%#v||topic:%s", err, self.cfg.Topic)
-		return
-	}
 }
