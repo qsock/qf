@@ -1,7 +1,6 @@
 package snowflake
 
 import (
-	"fmt"
 	"github.com/qsock/qf/net/ipaddr"
 	"strconv"
 	"strings"
@@ -110,13 +109,11 @@ func NextId() int64 {
 	} else {
 		// 取自增序列
 		sequence = (sequence + 1) & maskSequence
-		fmt.Println(sequence)
 		// 达到最大的值了
 		if sequence == 0 {
 			elapsedTime++
 			overTime := elapsedTime - current // 睡眠
 			time.Sleep(time.Duration(overTime) * time.Second)
-			fmt.Println("time to sleep", overTime, elapsedTime, current)
 		}
 	}
 	return toID()
