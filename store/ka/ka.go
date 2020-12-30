@@ -14,8 +14,10 @@ const (
 )
 
 var (
-	producers = map[string]*Producer{}
-	consumers = map[string]*Consumer{}
+	producers         = map[string]*Producer{}
+	consumers         = map[string]*Consumer{}
+	gConsumerHandlers = map[string]map[string]HandleConsumerFunc{}
+	handlerLock       = sync.RWMutex{}
 )
 
 type (
@@ -40,9 +42,6 @@ type Consumer struct {
 	config *sarama.Config
 	e      HandleErrorFunc
 	wg     *sync.WaitGroup
-
-	handlers    map[string]HandleConsumerFunc
-	handlerLock sync.RWMutex
 
 	cfg *ConsumerConfig
 }
@@ -79,8 +78,14 @@ func GetConsumer(name ...string) *Consumer {
 	return consumers[consumerName]
 }
 
-func TopicEvent(topic, t string, e interface{}) {
-	GetProducer().TopicEvent(topic, t, e)
+// 发布消息的主要方法
+func PushEvent(topic, eventType string, e interface{}) {
+	GetProducer().TopicEvent(topic, eventType, e)
+}
+
+// 消费消息的主要方法
+func ConsumerEvent(topic, eventType string, consumerFunc HandleConsumerFunc) {
+	setConsumerHandler(topic, eventType, consumerFunc)
 }
 
 func Close() error {
@@ -91,4 +96,29 @@ func Close() error {
 		_ = consumer.Close()
 	}
 	return nil
+}
+
+func getConsumerHandler(topic, eventType string) HandleConsumerFunc {
+	handlerLock.RLock()
+	defer handlerLock.RUnlock()
+	handlers, ok := gConsumerHandlers[topic]
+	if !ok {
+		return nil
+	}
+	return handlers[eventType]
+}
+
+func setConsumerHandler(topic, eventType string, consumerFunc HandleConsumerFunc) {
+	handlerLock.Lock()
+	handlerLock.Unlock()
+	handlers, ok := gConsumerHandlers[topic]
+	if !ok {
+		handlers = make(map[string]HandleConsumerFunc)
+	}
+	_, ok = handlers[eventType]
+	if ok {
+		panic(eventType + " is exists")
+	}
+	handlers[eventType] = consumerFunc
+	gConsumerHandlers[topic] = handlers
 }

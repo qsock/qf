@@ -38,11 +38,11 @@ func (c *ConsumerConfig) Check() bool {
 	return true
 }
 
-func NewConsumer(cfg *ConsumerConfig, name ...string) error {
-	return NewConsumerWithConfig(cfg, nil, name...)
+func NewConsumer(cfg *ConsumerConfig) error {
+	return NewConsumerWithConfig(cfg, nil)
 }
 
-func NewConsumerWithInterceptor(cfg1 *ConsumerConfig, interceptor sarama.ConsumerInterceptor, name ...string) error {
+func NewConsumerWithInterceptor(cfg1 *ConsumerConfig, interceptor sarama.ConsumerInterceptor) error {
 	if !cfg1.Check() {
 		return errors.New("config error")
 	}
@@ -55,10 +55,10 @@ func NewConsumerWithInterceptor(cfg1 *ConsumerConfig, interceptor sarama.Consume
 		cfg2.Consumer.Offsets.Initial = sarama.OffsetNewest
 	}
 	cfg2.Consumer.Interceptors = []sarama.ConsumerInterceptor{interceptor}
-	return NewConsumerWithConfig(cfg1, cfg2, name...)
+	return NewConsumerWithConfig(cfg1, cfg2)
 }
 
-func NewConsumerWithConfig(cfg1 *ConsumerConfig, cfg2 *sarama.Config, name ...string) error {
+func NewConsumerWithConfig(cfg1 *ConsumerConfig, cfg2 *sarama.Config) error {
 	if !cfg1.Check() {
 		return errors.New("config error")
 	}
@@ -90,13 +90,8 @@ func NewConsumerWithConfig(cfg1 *ConsumerConfig, cfg2 *sarama.Config, name ...st
 	c.config = cfg2
 	c.group = consumerGroup
 	c.wg = &sync.WaitGroup{}
-	c.handlers = make(map[string]HandleConsumerFunc)
 	c.ctx, c.cancel = context.WithCancel(context.Background())
-
-	consumerName := gDefaultName
-	if len(name) > 0 {
-		consumerName = name[0]
-	}
+	consumerName := cfg1.Topic
 	_, ok := consumers[consumerName]
 	if ok {
 		return errors.New("consumer exists")
@@ -109,26 +104,28 @@ type consumerGroupHandler struct {
 	consumer *Consumer
 }
 
+func (h consumerGroupHandler) getTopic() string {
+	return h.consumer.GetTopic()
+}
+
 func (consumerGroupHandler) Setup(_ sarama.ConsumerGroupSession) error   { return nil }
 func (consumerGroupHandler) Cleanup(_ sarama.ConsumerGroupSession) error { return nil }
 func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, claim sarama.ConsumerGroupClaim) error {
 	for {
 		select {
 		case msg, ok := <-claim.Messages():
+
 			if !ok {
 				return nil
 			}
 			e := &Event{}
 			if err := json.Unmarshal(msg.Value, e); err != nil {
+				sess.MarkMessage(msg, gMsgDone)
 				return err
 			}
-			h.consumer.handlerLock.RLock()
-			handler, ok := h.consumer.handlers[e.Type]
-			h.consumer.handlerLock.RUnlock()
-
-			if ok {
+			if handler := getConsumerHandler(h.getTopic(), e.Type); handler != nil {
 				if err := handler(e); err != nil {
-					return err
+					return nil
 				}
 			}
 			sess.MarkMessage(msg, gMsgDone)
@@ -140,10 +137,12 @@ func (c *Consumer) HandleError(e HandleErrorFunc) {
 	c.e = e
 }
 
-func (c *Consumer) HandleSucceed(t string, cc HandleConsumerFunc) {
-	c.handlerLock.Lock()
-	defer c.handlerLock.Unlock()
-	c.handlers[t] = cc
+func (c *Consumer) GetTopic() string {
+	return c.cfg.Topic
+}
+
+func (c *Consumer) HandleSucceed(eventType string, consumerFunc HandleConsumerFunc) {
+	setConsumerHandler(c.GetTopic(), eventType, consumerFunc)
 }
 
 func (c *Consumer) Run() {
