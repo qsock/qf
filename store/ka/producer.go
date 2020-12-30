@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func NewProducer(brokers []string, name ...string) (*Producer, error) {
+func NewProducer(brokers []string, name ...string) error {
 	cfg := sarama.NewConfig()
 	cfg.Net.KeepAlive = 60 * time.Second
 	cfg.Producer.Return.Successes = true
@@ -18,7 +18,7 @@ func NewProducer(brokers []string, name ...string) (*Producer, error) {
 	return NewProducerWithCfg(brokers, cfg, name...)
 }
 
-func NewProducerWithInterceptor(brokers []string, interceptor sarama.ProducerInterceptor, name ...string) (*Producer, error) {
+func NewProducerWithInterceptor(brokers []string, interceptor sarama.ProducerInterceptor, name ...string) error {
 	cfg := sarama.NewConfig()
 	cfg.Net.KeepAlive = 60 * time.Second
 	cfg.Producer.Return.Successes = true
@@ -32,10 +32,10 @@ func NewProducerWithInterceptor(brokers []string, interceptor sarama.ProducerInt
 	return NewProducerWithCfg(brokers, cfg, name...)
 }
 
-func NewProducerWithCfg(brokers []string, cfg *sarama.Config, name ...string) (*Producer, error) {
+func NewProducerWithCfg(brokers []string, cfg *sarama.Config, name ...string) error {
 	producer, err := sarama.NewAsyncProducer(brokers, cfg)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	p := new(Producer)
 	p.producer = producer
@@ -47,10 +47,10 @@ func NewProducerWithCfg(brokers []string, cfg *sarama.Config, name ...string) (*
 	}
 	_, ok := producers[producerName]
 	if ok {
-		return nil, errors.New("producer exists")
+		return errors.New("producer exists")
 	}
 	producers[producerName] = p
-	return p, nil
+	return nil
 }
 
 func (p *Producer) handle() {
@@ -96,13 +96,13 @@ func (p *Producer) Send(topic string, data []byte) {
 	p.producer.Input() <- msg
 }
 
-func (p *Producer) TopicEvent(topic, t string, e interface{}) {
-	msg := &E{
-		Type:     t,
+func (p *Producer) TopicEvent(topic, data string, e interface{}) {
+	msg := &eventProducer{
+		Type:     data,
 		Time:     time.Now().Format("2006-01-02 15:04:05"),
 		From:     localAddr,
 		Hostname: hostname,
-		Msg:      e,
+		Data:     e,
 	}
 	b, _ := json.Marshal(msg)
 	p.Send(topic, b)

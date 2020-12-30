@@ -2,6 +2,7 @@ package ka
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"github.com/Shopify/sarama"
@@ -37,13 +38,13 @@ func (c *ConsumerConfig) Check() bool {
 	return true
 }
 
-func NewConsumer(cfg *ConsumerConfig, name ...string) (*Consumer, error) {
+func NewConsumer(cfg *ConsumerConfig, name ...string) error {
 	return NewConsumerWithConfig(cfg, nil, name...)
 }
 
-func NewConsumerWithInterceptor(cfg1 *ConsumerConfig, interceptor sarama.ConsumerInterceptor, name ...string) (*Consumer, error) {
+func NewConsumerWithInterceptor(cfg1 *ConsumerConfig, interceptor sarama.ConsumerInterceptor, name ...string) error {
 	if !cfg1.Check() {
-		return nil, errors.New("config error")
+		return errors.New("config error")
 	}
 	cfg2 := sarama.NewConfig()
 	cfg2.Consumer.Return.Errors = true
@@ -57,9 +58,9 @@ func NewConsumerWithInterceptor(cfg1 *ConsumerConfig, interceptor sarama.Consume
 	return NewConsumerWithConfig(cfg1, cfg2, name...)
 }
 
-func NewConsumerWithConfig(cfg1 *ConsumerConfig, cfg2 *sarama.Config, name ...string) (*Consumer, error) {
+func NewConsumerWithConfig(cfg1 *ConsumerConfig, cfg2 *sarama.Config, name ...string) error {
 	if !cfg1.Check() {
-		return nil, errors.New("config error")
+		return errors.New("config error")
 	}
 	if cfg2 == nil {
 		cfg2 = sarama.NewConfig()
@@ -72,23 +73,24 @@ func NewConsumerWithConfig(cfg1 *ConsumerConfig, cfg2 *sarama.Config, name ...st
 		}
 	}
 	if err := cfg2.Validate(); err != nil {
-		return nil, err
+		return err
 	}
 	// Start with a client
 	client, err := sarama.NewClient(cfg1.Brokers, cfg2)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// Start a new consumer group
 	consumerGroup, err := sarama.NewConsumerGroupFromClient(cfg1.Group, client)
 	if err != nil {
-		return nil, err
+		return err
 	}
 	c := new(Consumer)
 	c.cfg = cfg1
 	c.config = cfg2
 	c.group = consumerGroup
 	c.wg = &sync.WaitGroup{}
+	c.handlers = make(map[string]HandleConsumerFunc)
 	c.ctx, c.cancel = context.WithCancel(context.Background())
 
 	consumerName := gDefaultName
@@ -97,10 +99,10 @@ func NewConsumerWithConfig(cfg1 *ConsumerConfig, cfg2 *sarama.Config, name ...st
 	}
 	_, ok := consumers[consumerName]
 	if ok {
-		return nil, errors.New("consumer exists")
+		return errors.New("consumer exists")
 	}
 	consumers[consumerName] = c
-	return c, nil
+	return nil
 }
 
 type consumerGroupHandler struct {
@@ -116,9 +118,20 @@ func (h consumerGroupHandler) ConsumeClaim(sess sarama.ConsumerGroupSession, cla
 			if !ok {
 				return nil
 			}
-			if err := h.consumer.c(msg.Value); err == nil {
-				sess.MarkMessage(msg, gMsgDone)
+			e := &Event{}
+			if err := json.Unmarshal(msg.Value, e); err != nil {
+				return err
 			}
+			h.consumer.handlerLock.RLock()
+			handler, ok := h.consumer.handlers[e.Type]
+			h.consumer.handlerLock.RUnlock()
+
+			if ok {
+				if err := handler(e); err != nil {
+					return err
+				}
+			}
+			sess.MarkMessage(msg, gMsgDone)
 		}
 	}
 }
@@ -127,8 +140,10 @@ func (c *Consumer) HandleError(e HandleErrorFunc) {
 	c.e = e
 }
 
-func (c *Consumer) HandleSucceed(cc HandleConsumerFunc) {
-	c.c = cc
+func (c *Consumer) HandleSucceed(t string, cc HandleConsumerFunc) {
+	c.handlerLock.Lock()
+	defer c.handlerLock.Unlock()
+	c.handlers[t] = cc
 }
 
 func (c *Consumer) Run() {

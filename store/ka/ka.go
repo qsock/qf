@@ -19,9 +19,10 @@ var (
 )
 
 type (
-	HandleErrorFunc    func(error)
-	HandleSucceedFunc  func(*sarama.ProducerMessage)
-	HandleConsumerFunc func([]byte) error
+	HandleErrorFunc   func(error)
+	HandleSucceedFunc func(*sarama.ProducerMessage)
+	// 如果返回error，则这一条消费不会被mark消费成功
+	HandleConsumerFunc func(e *Event) error
 )
 
 type Producer struct {
@@ -38,26 +39,28 @@ type Consumer struct {
 	group  sarama.ConsumerGroup
 	config *sarama.Config
 	e      HandleErrorFunc
-	c      HandleConsumerFunc
 	wg     *sync.WaitGroup
+
+	handlers    map[string]HandleConsumerFunc
+	handlerLock sync.RWMutex
 
 	cfg *ConsumerConfig
 }
 
-type E struct {
-	Time     string      `json:"atime,omitempty"`
-	Type     string      `json:"atype,omitempty"`
-	From     string      `json:"afrom,omitempty"`
-	Hostname string      `json:"hostname,omitempty"`
-	Msg      interface{} `json:"msg,omitempty"`
+type Event struct {
+	Time     string          `json:"Time,omitempty"`
+	Hostname string          `json:"Hostname,omitempty"`
+	From     string          `json:"From,omitempty"`
+	Type     string          `json:"Type,omitempty"`
+	Data     json.RawMessage `json:"Data,omitempty"`
 }
 
-type EConsumer struct {
-	Time     string          `json:"atime,omitempty"`
-	Type     string          `json:"atype,omitempty"`
-	From     string          `json:"afrom,omitempty"`
-	Hostname string          `json:"hostname,omitempty"`
-	Msg      json.RawMessage `json:"msg,omitempty"`
+type eventProducer struct {
+	Time     string      `json:"Time,omitempty"`
+	From     string      `json:"From,omitempty"`
+	Hostname string      `json:"Hostname,omitempty"`
+	Type     string      `json:"Type,omitempty"`
+	Data     interface{} `json:"Data,omitempty"`
 }
 
 func GetProducer(name ...string) *Producer {
