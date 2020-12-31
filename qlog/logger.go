@@ -72,7 +72,7 @@ func (l *Atom) p(level types.LEVEL, args ...interface{}) {
 	b := drv.bytes(l)
 
 	fmt.Printf(string(b))
-	fmt.Println()
+	//fmt.Println()
 }
 
 func (l *Atom) pf(level types.LEVEL, format string, args ...interface{}) {
