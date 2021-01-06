@@ -12,7 +12,7 @@ func NewProducer(brokers []string, name ...string) error {
 	cfg.Net.KeepAlive = 60 * time.Second
 	cfg.Producer.Return.Successes = true
 	cfg.Producer.Return.Errors = true
-	cfg.Version = sarama.V0_10_2_0
+	cfg.Version = version
 	cfg.Producer.Flush.Frequency = time.Second
 	cfg.Producer.Flush.MaxMessages = 10
 	return NewProducerWithCfg(brokers, cfg, name...)
@@ -23,7 +23,7 @@ func NewProducerWithInterceptor(brokers []string, interceptor sarama.ProducerInt
 	cfg.Net.KeepAlive = 60 * time.Second
 	cfg.Producer.Return.Successes = true
 	cfg.Producer.Return.Errors = true
-	cfg.Version = sarama.V0_10_2_0
+	cfg.Version = version
 	cfg.Producer.Flush.Frequency = time.Second
 	cfg.Producer.Flush.MaxMessages = 10
 	if interceptor != nil {

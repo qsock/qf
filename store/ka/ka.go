@@ -18,6 +18,7 @@ var (
 	consumers         = map[string]*Consumer{}
 	gConsumerHandlers = map[string]map[string]HandleConsumerFunc{}
 	handlerLock       = sync.RWMutex{}
+	version           = sarama.V2_3_0_0
 )
 
 type (
@@ -60,6 +61,14 @@ type eventProducer struct {
 	Hostname string      `json:"Hostname,omitempty"`
 	Type     string      `json:"Type,omitempty"`
 	Data     interface{} `json:"Data,omitempty"`
+}
+
+func GetVersion() sarama.KafkaVersion {
+	return version
+}
+
+func SetVersion(v sarama.KafkaVersion) {
+	version = v
 }
 
 func GetProducer(name ...string) *Producer {

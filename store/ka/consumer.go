@@ -48,7 +48,7 @@ func NewConsumerWithInterceptor(cfg1 *ConsumerConfig, interceptor sarama.Consume
 	}
 	cfg2 := sarama.NewConfig()
 	cfg2.Consumer.Return.Errors = true
-	cfg2.Version = sarama.V0_10_2_0
+	cfg2.Version = version
 	if cfg1.Oldest {
 		cfg2.Consumer.Offsets.Initial = sarama.OffsetOldest
 	} else {
@@ -65,7 +65,7 @@ func NewConsumerWithConfig(cfg1 *ConsumerConfig, cfg2 *sarama.Config) error {
 	if cfg2 == nil {
 		cfg2 = sarama.NewConfig()
 		cfg2.Consumer.Return.Errors = true
-		cfg2.Version = sarama.V0_10_2_0
+		cfg2.Version = version
 		if cfg1.Oldest {
 			cfg2.Consumer.Offsets.Initial = sarama.OffsetOldest
 		} else {
