@@ -18,3 +18,7 @@ func BenchmarkNextId(b *testing.B) {
 		b.Log(id, ToTimeUnix(NextId()))
 	}
 }
+
+func TestMachineID(t *testing.T) {
+	t.Log(machineId())
+}
