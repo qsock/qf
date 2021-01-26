@@ -2,6 +2,7 @@ package snowflake
 
 import (
 	"testing"
+	"time"
 )
 
 func TestNextId(t *testing.T) {
@@ -21,4 +22,10 @@ func BenchmarkNextId(b *testing.B) {
 
 func TestMachineID(t *testing.T) {
 	t.Log(machineId())
+}
+
+func TestFakeId(t *testing.T) {
+	id := FakeId(time.Now(), 10)
+	tt := ToTimeUnix(id)
+	t.Log(id, tt)
 }
