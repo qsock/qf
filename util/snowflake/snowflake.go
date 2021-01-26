@@ -68,14 +68,6 @@ func toSnowFlakeTime(t time.Time) int64 {
 	return t.UTC().UnixNano() / snowflakeTimeUnit
 }
 
-// SetMachineID 设置机器码
-//func SetMachineID(mid uint16) bool {
-//	// 机器id
-
-//	machineID = mid
-//	return true
-//}
-
 func SetMachineID(mid uint16) bool {
 	// 机器id
 	if NODE_MASK < mid {
@@ -88,7 +80,6 @@ func SetMachineID(mid uint16) bool {
 		machineID = mid
 	}
 	return true
-
 }
 
 func machineId() uint16 {
