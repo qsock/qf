@@ -163,9 +163,15 @@ func (c *Consumer) Worker() {
 	defer c.wg.Done()
 	topics := []string{c.cfg.Topic}
 	handler := consumerGroupHandler{c}
-	if err := c.group.Consume(c.ctx, topics, handler); err != nil {
-		if c.e != nil {
-			c.e(err)
+	for {
+		if err := c.group.Consume(c.ctx, topics, handler); err != nil {
+			if c.e != nil {
+				c.e(err)
+			}
+		}
+
+		if c.ctx.Err() != nil {
+			return
 		}
 	}
 }
