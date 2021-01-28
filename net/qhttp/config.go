@@ -13,7 +13,7 @@ type Config struct {
 	Port     int           `json:"port" toml:"port"`
 	Addrs    []string      `json:"addrs" toml:"addrs"`
 	Timeout  time.Duration `json:"timeout" toml:"timeout"`
-	PoolSize int           `json:"pool_size" toml:"pool_size"`
+	PoolSize int           `json:"pool_size" toml:"poolSize"`
 }
 
 func (c *Config) check() bool {
