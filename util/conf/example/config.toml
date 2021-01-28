@@ -1,0 +1,11 @@
+[log]
+    # 日志的输出文件夹
+    dir            = "/srv/api_gateway/logs"
+    # 文件名称
+    name           = "api_gateway.log"
+    # 日志等级
+    level          = "debug"
+    # 查看调用者
+    addCaller     = true
+    # debug
+    debug          = true

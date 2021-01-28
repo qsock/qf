@@ -9,11 +9,12 @@ import (
 
 func main() {
 	config := qlog.Config{
-		Name:  "default.log",
-		Dir:   "/tmp",
-		Level: "info",
-		//Debug:     true,
-		AddCaller: true,
+		Name:       "default.log",
+		Dir:        "/tmp",
+		Level:      "info",
+		Debug:      true,
+		AddCaller:  true,
+		CallerSkip: 1,
 	}
 	logger := config.Build()
 

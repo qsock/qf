@@ -19,22 +19,22 @@ type Config struct {
 	// 日志初始化字段
 	Fields []zap.Field `json:"fields" toml:"fields"`
 	// 是否添加调用者信息
-	AddCaller bool `json:"add_caller" toml:"add_caller"`
+	AddCaller bool `json:"add_caller" toml:"addCaller"`
 	// 日志前缀
 	Prefix string `json:"prefix" toml:"prefix"`
 	// 日志输出文件最大长度，超过改值则截断
-	MaxSize   int `json:"max_size" toml:"max_size"`
-	MaxAge    int `json:"max_age" toml:"max_age"`
-	MaxBackup int `json:"max_backup" toml:"max_backup"`
+	MaxSize   int `json:"max_size" toml:"maxSize"`
+	MaxAge    int `json:"max_age" toml:"maxAge"`
+	MaxBackup int `json:"max_backup" toml:"maxBackup"`
 	// 日志磁盘刷盘间隔
 	Interval      time.Duration          `json:"internal" toml:"internal"`
-	CallerSkip    int                    `json:"caller_skip" toml:"caller_skip"`
+	CallerSkip    int                    `json:"caller_skip" toml:"callerSkip"`
 	Async         bool                   `json:"async" toml:"async"`
 	Queue         bool                   `json:"queue" toml:"queue"`
-	QueueSleep    time.Duration          `json:"queue_sleep" toml:"queue_sleep"`
+	QueueSleep    time.Duration          `json:"queue_sleep" toml:"queueSleep"`
 	Core          zapcore.Core           `json:"core" toml:"core"`
 	Debug         bool                   `json:"debug" toml:"debug"`
-	EncoderConfig *zapcore.EncoderConfig `json:"encoder_config" toml:"encoder_config"`
+	EncoderConfig *zapcore.EncoderConfig `json:"encoder_config" toml:"encoderConfig"`
 }
 
 // Filename ...

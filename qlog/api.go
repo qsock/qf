@@ -148,3 +148,8 @@ func SetCtxParse(parser CtParserFunc) {
 func Ctx(ctx context.Context) *Logger {
 	return defaultLogger.Ctx(ctx)
 }
+
+// Flush ...
+func Flush() error {
+	return defaultLogger.Flush()
+}
