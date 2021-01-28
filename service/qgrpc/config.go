@@ -37,7 +37,7 @@ type Config struct {
 }
 
 func (c *Config) check() bool {
-	if len(c.EndPoints) == 0 {
+	if len(c.Endpoints) == 0 {
 		return false
 	}
 
