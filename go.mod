@@ -22,5 +22,6 @@ require (
 	github.com/qsock/qvs v0.0.0-20201120090400-82c40240c68e
 	go.etcd.io/etcd/api/v3 v3.5.0-pre
 	go.etcd.io/etcd/client/v3 v3.0.0-20201118182908-c11ddc65cea1
+	go.uber.org/zap v1.16.0
 	google.golang.org/grpc v1.29.1
 )
