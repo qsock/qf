@@ -1,9 +1,8 @@
 package qlog_test
 
 import (
+	"github.com/qsock/qf/qlog"
 	"testing"
-
-	"qifeiwu.com/qlog"
 )
 
 func Test_Info(t *testing.T) {

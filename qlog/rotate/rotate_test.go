@@ -3,12 +3,11 @@
 package rotate_test
 
 import (
+	"github.com/qsock/qf/qlog/rotate"
 	"log"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"qifeiwu.com/qlog/rotate"
 )
 
 // Example of how to rotate in response to SIGHUP.

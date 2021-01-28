@@ -1,9 +1,8 @@
 package rotate_test
 
 import (
+	"github.com/qsock/qf/qlog/rotate"
 	"log"
-
-	"qifeiwu.com/qlog/rotate"
 )
 
 // To use rotate with the standard library's log package, just pass it into

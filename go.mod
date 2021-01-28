@@ -8,7 +8,6 @@ replace (
 )
 
 require (
-	github.com/BurntSushi/toml v0.3.1
 	github.com/Shopify/sarama v1.27.2
 	github.com/bradfitz/gomemcache v0.0.0-20190913173617-a41fca850d0b
 	github.com/go-redis/redis v6.15.9+incompatible
@@ -20,6 +19,7 @@ require (
 	github.com/onsi/ginkgo v1.14.2 // indirect
 	github.com/onsi/gomega v1.10.3 // indirect
 	github.com/qsock/qvs v0.0.0-20201120090400-82c40240c68e
+	github.com/stretchr/testify v1.6.1
 	go.etcd.io/etcd/api/v3 v3.5.0-pre
 	go.etcd.io/etcd/client/v3 v3.0.0-20201118182908-c11ddc65cea1
 	go.uber.org/zap v1.16.0

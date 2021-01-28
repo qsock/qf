@@ -3,29 +3,30 @@ package ka
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"github.com/Shopify/sarama"
 	"sync"
 )
 
 const (
-	gDefaultName = "default"
-	TestPrefix   = "test_consumer_"
-	gMsgDone     = "done"
+	gTestPrefix = "test_consumer_"
+	gMsgDone    = "done"
 )
 
 var (
-	producers         = map[string]*Producer{}
-	consumers         = map[string]*Consumer{}
-	gConsumerHandlers = map[string]map[string]HandleConsumerFunc{}
-	handlerLock       = sync.RWMutex{}
-	version           = sarama.V2_3_0_0
+	ver = sarama.V0_10_2_0
+)
+
+var (
+	ErrConsumerNotFound = errors.New("consumer not found")
 )
 
 type (
 	HandleErrorFunc   func(error)
 	HandleSucceedFunc func(*sarama.ProducerMessage)
 	// 如果返回error，则这一条消费不会被mark消费成功
-	HandleConsumerFunc func(e *Event) error
+	HandleConsumerFunc    func(e *Event) error
+	HandleConsumerMsgFunc func(message *sarama.ConsumerMessage)
 )
 
 type Producer struct {
@@ -36,6 +37,8 @@ type Producer struct {
 }
 
 type Consumer struct {
+	run bool
+
 	ctx    context.Context
 	cancel context.CancelFunc
 
@@ -44,7 +47,12 @@ type Consumer struct {
 	e      HandleErrorFunc
 	wg     *sync.WaitGroup
 
-	cfg *ConsumerConfig
+	cfg   *ConsumerConfig
+	topic string
+
+	consumerMsgHandler HandleConsumerMsgFunc
+	consumerHandlers   map[string]HandleConsumerFunc
+	handlerLock        sync.RWMutex
 }
 
 type Event struct {
@@ -63,71 +71,10 @@ type eventProducer struct {
 	Data     interface{} `json:"Data,omitempty"`
 }
 
-func GetVersion() sarama.KafkaVersion {
-	return version
-}
-
 func SetVersion(v sarama.KafkaVersion) {
-	version = v
+	ver = v
 }
 
-func GetProducer(name ...string) *Producer {
-	producerName := gDefaultName
-	if len(name) > 0 {
-		producerName = name[0]
-	}
-	return producers[producerName]
-}
-
-func GetConsumer(name ...string) *Consumer {
-	consumerName := gDefaultName
-	if len(name) > 0 {
-		consumerName = name[0]
-	}
-	return consumers[consumerName]
-}
-
-// 发布消息的主要方法
-func PushEvent(topic, eventType string, e interface{}) {
-	GetProducer().TopicEvent(topic, eventType, e)
-}
-
-// 消费消息的主要方法
-func ConsumerEvent(topic, eventType string, consumerFunc HandleConsumerFunc) {
-	setConsumerHandler(topic, eventType, consumerFunc)
-}
-
-func Close() error {
-	for _, producer := range producers {
-		_ = producer.Close()
-	}
-	for _, consumer := range consumers {
-		_ = consumer.Close()
-	}
-	return nil
-}
-
-func getConsumerHandler(topic, eventType string) HandleConsumerFunc {
-	handlerLock.RLock()
-	defer handlerLock.RUnlock()
-	handlers, ok := gConsumerHandlers[topic]
-	if !ok {
-		return nil
-	}
-	return handlers[eventType]
-}
-
-func setConsumerHandler(topic, eventType string, consumerFunc HandleConsumerFunc) {
-	handlerLock.Lock()
-	handlerLock.Unlock()
-	handlers, ok := gConsumerHandlers[topic]
-	if !ok {
-		handlers = make(map[string]HandleConsumerFunc)
-	}
-	_, ok = handlers[eventType]
-	if ok {
-		panic(eventType + " is exists")
-	}
-	handlers[eventType] = consumerFunc
-	gConsumerHandlers[topic] = handlers
+func GetVersion() sarama.KafkaVersion {
+	return ver
 }
