@@ -6,5 +6,7 @@ import (
 )
 
 func Test_Info(t *testing.T) {
+	cfg := qlog.DefaultConfig()
+	qlog.SetCfg(cfg)
 	qlog.Info("hello", qlog.Any("a", "b"))
 }
