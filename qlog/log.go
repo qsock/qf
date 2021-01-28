@@ -179,7 +179,8 @@ func DebugEncodeLevel(lv zapcore.Level, enc zapcore.PrimitiveArrayEncoder) {
 }
 
 func timeEncoder(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-	enc.AppendInt64(t.Unix())
+	enc.AppendString(t.Format("2006-01-02 15:04:05"))
+	//enc.AppendInt64(t.Unix())
 }
 
 // IsDebugMode ...
