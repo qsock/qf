@@ -33,7 +33,7 @@ func (l *Listener) listen() {
 	for {
 		n, addr, err := l.conn.ReadFromUDP(data)
 		if err != nil {
-			qlog.Get().Logger().Error(err)
+			qlog.Error(err.Error())
 			l.newErr <- err
 			continue
 		}

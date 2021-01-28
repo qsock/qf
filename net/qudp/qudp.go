@@ -52,7 +52,7 @@ func (s *Server) run() {
 		case err, ok := <-s.l.newErr:
 			{
 				if ok {
-					qlog.Get().Logger().Error(err)
+					qlog.Error(err.Error())
 				}
 			}
 		}

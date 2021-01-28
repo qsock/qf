@@ -5,126 +5,128 @@ import (
 	"go.uber.org/zap"
 )
 
-// DefaultLogger default logger
+// defaultLogger default logger
 // Biz Log
 // debug=true as default, will be
-var DefaultLogger = Config{
-	Debug: true,
-	Async: true,
-}.Build()
+var defaultLogger *Logger
+
+func SetCfg(cfg *Config) *Logger {
+	defaultLogger = cfg.Build()
+	return defaultLogger
+}
 
 // Auto ...
 func Auto(err error) Func {
 	if err != nil {
-		return DefaultLogger.With(zap.Any("err", err.Error())).Error
+		return defaultLogger.With(zap.Any("err", err.Error())).Error
 	}
 
-	return DefaultLogger.Info
+	return defaultLogger.Info
 }
 
 // Info ...
 func Info(msg string, fields ...Field) {
-	DefaultLogger.Info(msg, fields...)
+	defaultLogger.Info(msg, fields...)
 }
 
 // Debug ...
 func Debug(msg string, fields ...Field) {
-	DefaultLogger.Debug(msg, fields...)
+	defaultLogger.Debug(msg, fields...)
 }
 
 // Warn ...
 func Warn(msg string, fields ...Field) {
-	DefaultLogger.Warn(msg, fields...)
+	defaultLogger.Warn(msg, fields...)
 }
 
 // Error ...
 func Error(msg string, fields ...Field) {
-	DefaultLogger.Error(msg, fields...)
+	defaultLogger.Error(msg, fields...)
 }
 
 // Panic ...
 func Panic(msg string, fields ...Field) {
-	DefaultLogger.Panic(msg, fields...)
+	defaultLogger.Panic(msg, fields...)
 }
 
 // DPanic ...
 func DPanic(msg string, fields ...Field) {
-	DefaultLogger.DPanic(msg, fields...)
+	defaultLogger.DPanic(msg, fields...)
 }
 
 // Fatal ...
 func Fatal(msg string, fields ...Field) {
-	DefaultLogger.Fatal(msg, fields...)
+	defaultLogger.Fatal(msg, fields...)
 }
 
 // Debugw ...
 func Debugw(msg string, keysAndValues ...interface{}) {
-	DefaultLogger.Debugw(msg, keysAndValues...)
+	defaultLogger.Debugw(msg, keysAndValues...)
 }
 
 // Infow ...
 func Infow(msg string, keysAndValues ...interface{}) {
-	DefaultLogger.Infow(msg, keysAndValues...)
+	defaultLogger.Infow(msg, keysAndValues...)
 }
 
 // Warnw ...
 func Warnw(msg string, keysAndValues ...interface{}) {
-	DefaultLogger.Warnw(msg, keysAndValues...)
+	defaultLogger.Warnw(msg, keysAndValues...)
 }
 
 // Errorw ...
 func Errorw(msg string, keysAndValues ...interface{}) {
-	DefaultLogger.Errorw(msg, keysAndValues...)
+	defaultLogger.Errorw(msg, keysAndValues...)
 }
 
 // Panicw ...
 func Panicw(msg string, keysAndValues ...interface{}) {
-	DefaultLogger.Panicw(msg, keysAndValues...)
+	defaultLogger.Panicw(msg, keysAndValues...)
 }
 
 // DPanicw ...
 func DPanicw(msg string, keysAndValues ...interface{}) {
-	DefaultLogger.DPanicw(msg, keysAndValues...)
+	defaultLogger.DPanicw(msg, keysAndValues...)
 }
 
 // Fatalw ...
 func Fatalw(msg string, keysAndValues ...interface{}) {
-	DefaultLogger.Fatalw(msg, keysAndValues...)
+	defaultLogger.Fatalw(msg, keysAndValues...)
 }
 
 // Debugf ...
 func Debugf(msg string, args ...interface{}) {
-	DefaultLogger.Debugf(msg, args...)
+	defaultLogger.Debugf(msg, args...)
 }
 
 // Infof ...
 func Infof(msg string, args ...interface{}) {
-	DefaultLogger.Infof(msg, args...)
+	defaultLogger.Infof(msg, args...)
 }
 
 // Warnf ...
 func Warnf(msg string, args ...interface{}) {
-	DefaultLogger.Warnf(msg, args...)
+	defaultLogger.Warnf(msg, args...)
 }
 
 // Errorf ...
 func Errorf(msg string, args ...interface{}) {
-	DefaultLogger.Errorf(msg, args...)
+	defaultLogger.Errorf(msg, args...)
 }
 
 // Panicf ...
 func Panicf(msg string, args ...interface{}) {
-	DefaultLogger.Panicf(msg, args...)
+	defaultLogger.Panicf(msg, args...)
 }
 
 // DPanicf ...
 func DPanicf(msg string, args ...interface{}) {
-	DefaultLogger.DPanicf(msg, args...)
+	defaultLogger.DPanicf(msg, args...)
 }
 
 // Fatalf ...
 func Fatalf(msg string, args ...interface{}) {
-	DefaultLogger.Fatalf(msg, args...)
+	defaultLogger.Fatalf(msg, args...)
 }
 
 // Log ...
@@ -134,15 +136,15 @@ func (fn Func) Log(msg string, fields ...Field) {
 
 // With ...
 func With(fields ...Field) *Logger {
-	return DefaultLogger.With(fields...)
+	return defaultLogger.With(fields...)
 }
 
 // SetCtxParse ...
 func SetCtxParse(parser CtParserFunc) {
-	DefaultLogger.SetCtxParse(parser)
+	defaultLogger.SetCtxParse(parser)
 }
 
 // Context ...
 func Ctx(ctx context.Context) *Logger {
-	return DefaultLogger.Ctx(ctx)
+	return defaultLogger.Ctx(ctx)
 }

@@ -21,7 +21,7 @@ func (o *Op) ping() {
 			req, resp := new(NoArgs), new(NoArgs)
 			method := path.Join("/", m.serverName, "/Ping")
 			if err := CallWithServerNameTimeout(context.Background(), m.name, method, req, resp, 100*time.Millisecond); err != nil {
-				qlog.Get().Logger().Errorf("grpc||name:%s||err:%v", m.name, method)
+				qlog.Errorf("grpc||name:%s||err:%v", m.name, method)
 			}
 		}
 	}
